@@ -17,7 +17,7 @@ class AuthController extends Controller
         $this->session = new SpotifySession(
             config('services.spotify.clientId'),
             config('services.spotify.clientSecret'),
-            'http://nowplaying.dev/callback'
+            config('app.url') . '/callback'
         );
     }
 
@@ -60,5 +60,7 @@ class AuthController extends Controller
         $user->save();
 
         Auth::login($user, true);
+
+        return redirect()->to('/');
     }
 }
