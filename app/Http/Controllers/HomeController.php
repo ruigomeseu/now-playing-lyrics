@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Genius\Genius;
 use Illuminate\Support\Facades\Auth;
 use SpotifyWebAPI\SpotifyWebAPI;
+use SpotifyWebAPI\SpotifyWebAPIException;
+use SpotifyWebAPI\Session as SpotifySession;
 
 class HomeController extends Controller
 {
@@ -16,7 +18,26 @@ class HomeController extends Controller
             $api = new SpotifyWebAPI;
             $api->setAccessToken($user->access_token);
 
-            $currentTrack = $api->getMyCurrentTrack();
+            try {
+                $currentTrack = $api->getMyCurrentTrack();
+            } catch(SpotifyWebAPIException $e) {
+                $session = new SpotifySession(
+                    config('services.spotify.clientId'),
+                    config('services.spotify.clientSecret'),
+                    config('app.url') . '/callback'
+                );
+
+                $session->refreshAccessToken($user->refresh_token);
+                $accessToken = $session->getAccessToken();
+
+                $user->access_token = $accessToken;
+                $user->save();
+
+                $api->setAccessToken($accessToken);
+
+                $currentTrack = $api->getMyCurrentTrack();
+            }
+
             if (! $currentTrack->is_playing) {
                 return view('no-results');
             }
